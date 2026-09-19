@@ -368,9 +368,9 @@ export default function Teams() {
             <div className="stat-card available">
               <p className="stat-label">CASH AVAILABLE</p>
               <p className="stat-value">{formatMoney(stats.cash_available)}</p>
-              <button className="btn" style={{ marginTop: 8 }} onClick={() => setWithdrawOpen(true)}>
+              {/* <button className="btn" style={{ marginTop: 8 }} onClick={() => setWithdrawOpen(true)}>
                 ↓ Withdraw
-              </button>
+              </button> */}
             </div>
           </div>
         </>
