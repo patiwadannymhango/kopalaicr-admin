@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import HeaderNav from '../components/HeaderNav';
 import BulkUploadDialog from '../components/BulkUploadDialog';
 import WithdrawalDialog from '../components/WithdrawalDialog';
-import { titleCase, formatTime, formatMoney, registrationStatusLabel } from '../utils/format';
+import { titleCase, formatTime,registrationStatusLabel } from '../utils/format';
 import {
   createRegistrationManually,
   deleteRegistration,
@@ -369,40 +369,6 @@ export default function Registrations() {
             </div>
           </div>
 
-          <div className="stats-row stats-row-secondary">
-            <div className="stat-card collected">
-              <p className="stat-label">REVENUE COLLECTED</p>
-              <p className="stat-value">{formatMoney(stats.revenue_confirmed)}</p>
-              <p className="stat-sub">actually paid</p>
-            </div>
-            <div className="stat-card income">
-              <p className="stat-label">AMOUNT INCOME</p>
-              <p className="stat-value">{formatMoney(stats.total_income)}</p>
-              <p className="stat-sub">total potential</p>
-            </div>
-            <div className="stat-card pending">
-              <p className="stat-label">AMOUNT PENDING</p>
-              <p className="stat-value">{formatMoney(stats.revenue_pending)}</p>
-              <p className="stat-sub">still owed</p>
-            </div>
-            <div className="stat-card today">
-              <p className="stat-label">AMOUNT TODAY</p>
-              <p className="stat-value">{formatMoney(stats.revenue_today)}</p>
-              <p className="stat-sub">collected today</p>
-            </div>
-            <div className="stat-card withdrawn">
-              <p className="stat-label">CASH WITHDRAWN</p>
-              <p className="stat-value">{formatMoney(stats.cash_withdrawn)}</p>
-              <p className="stat-sub">taken out</p>
-            </div>
-            <div className="stat-card available">
-              <p className="stat-label">CASH AVAILABLE</p>
-              <p className="stat-value">{formatMoney(stats.cash_available)}</p>
-              {/* <button className="btn" style={{ marginTop: 8 }} onClick={() => setWithdrawOpen(true)}>
-                ↓ Withdraw
-              </button> */}
-            </div>
-          </div>
         </>
       )}
 
