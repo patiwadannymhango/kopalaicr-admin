@@ -92,7 +92,7 @@ export default function Teams() {
           setRows(data.results);
           setCount(data.count);
         })
-        .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load team registrations.'))
+        .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load group registrations.'))
         .finally(() => setLoading(false));
     },
     [search, statusFilter, relayFilter, page]
@@ -191,13 +191,13 @@ export default function Teams() {
         status: addForm.status,
         payment_method: addForm.payment_method,
       });
-      setNotice('Team registered.');
+      setNotice('Group registered.');
       setAddOpen(false);
       resetAddForm();
       load();
       loadStats();
     } catch (err) {
-      setAddError(err instanceof Error ? err.message : 'Failed to register team.');
+      setAddError(err instanceof Error ? err.message : 'Failed to register group.');
     } finally {
       setAddBusy(false);
     }
@@ -230,11 +230,11 @@ export default function Teams() {
     try {
       await updateTeamDetails(editTarget.id, editForm);
       setEditTarget(null);
-      setNotice('Team updated.');
+      setNotice('Group updated.');
       load();
       loadStats();
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : 'Failed to update team.');
+      setEditError(err instanceof Error ? err.message : 'Failed to update group.');
     } finally {
       setEditBusy(false);
     }
@@ -258,7 +258,7 @@ export default function Teams() {
     try {
       await deleteTeamRegistration(deleteTarget.id);
       setDeleteTarget(null);
-      setNotice('Team registration deleted.');
+      setNotice('Group registration deleted.');
       load();
       loadStats();
     } catch (err) {
@@ -276,7 +276,7 @@ export default function Teams() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'kopala-icr-team-registrations.xlsx';
+      a.download = 'kopala-icr-group-registrations.xlsx';
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -290,13 +290,28 @@ export default function Teams() {
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
 
+  // The public form no longer asks a group to pick a relay_category —
+  // real submissions all land as "mixed-team" (see kopalaicr-api's
+  // AdminManualTeamRegistrationSerializer docstring), so it doesn't
+  // reflect anything the registrant actually chose. What they did choose
+  // is a race category per named runner — surface that instead.
+  const categoryNameByCode = new Map((filterOptions?.categories ?? []).map((c) => [c.code, c.name]));
+
+  function raceCategorySummary(team: AdminTeamRegistration): string {
+    if (team.roster.length === 0) return team.category_name || '—';
+    const names = [
+      ...new Set(team.roster.map((r) => categoryNameByCode.get(r.race_category) || r.race_category).filter(Boolean)),
+    ];
+    return names.join(', ') || '—';
+  }
+
   return (
     <div className="page">
       <div className="header">
         <div className="header-left">
           <div className="header-title">
             <p className="eyebrow">KOPALA ICR 2026</p>
-            <h1>Teams</h1>
+            <h1>Groups</h1>
           </div>
           <HeaderNav />
         </div>
@@ -315,7 +330,7 @@ export default function Teams() {
               setAddOpen(true);
             }}
           >
-            + Add Team
+            + Add Group
           </button>
           <button className="btn btn-amber" onClick={handleExport} disabled={exportBusy}>
             {exportBusy ? 'Exporting…' : '↓ Export Excel'}
@@ -335,7 +350,7 @@ export default function Teams() {
             <div className="stat-card">
               <p className="stat-label">TOTAL</p>
               <p className="stat-value">{stats.total_registrations}</p>
-              <p className="stat-sub">teams</p>
+              <p className="stat-sub">groups</p>
             </div>
             <div className="stat-card paid">
               <p className="stat-label">PAID</p>
@@ -360,7 +375,7 @@ export default function Teams() {
       <div className="filters-row">
         <input
           className="filter-input"
-          placeholder="Search team, company, captain, reference…"
+          placeholder="Search group, company, captain, reference…"
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -409,13 +424,14 @@ export default function Teams() {
               <tr>
                 <th>•</th>
                 <th>Reference</th>
-                <th>Team</th>
+                <th>Group</th>
                 <th>Company / Institution</th>
-                <th>Category</th>
+                <th>Participants</th>
+                <th>Race categories</th>
                 <th>Captain</th>
                 <th>Phone</th>
                 <th>Email</th>
-                <th>Roster</th>
+                <th>Named roster</th>
                 <th>Amount</th>
                 <th>Status</th>
                 <th></th>
@@ -428,7 +444,8 @@ export default function Teams() {
                   <td>{r.registration_number || '—'}</td>
                   <td className="name">{r.team_name}</td>
                   <td>{r.company_or_institution}</td>
-                  <td>{titleCase(r.relay_category)}</td>
+                  <td>{r.participant_count ?? r.roster.length}</td>
+                  <td>{raceCategorySummary(r)}</td>
                   <td>
                     {r.captain_first_name} {r.captain_last_name}
                   </td>
@@ -462,7 +479,7 @@ export default function Teams() {
             </tbody>
           </table>
           {loading && <div className="loading-state">Loading…</div>}
-          {!loading && rows.length === 0 && <div className="empty-state">No team registrations match these filters.</div>}
+          {!loading && rows.length === 0 && <div className="empty-state">No group registrations match these filters.</div>}
         </div>
 
         <div className="table-footer">
@@ -485,9 +502,9 @@ export default function Teams() {
       {addOpen && (
         <div className="modal-backdrop" onClick={() => setAddOpen(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h2>Add team</h2>
+            <h2>Add group</h2>
             <div className="field">
-              <label>Team name</label>
+              <label>Group name</label>
               <input value={addForm.team_name} onChange={(e) => setAddForm({ ...addForm, team_name: e.target.value })} />
             </div>
             <div className="field">
@@ -512,6 +529,10 @@ export default function Teams() {
                   </option>
                 ))}
               </select>
+              <p className="field-note">
+                Internal grouping only — not asked on the public form. Each runner's own race category (below) is
+                what they actually registered for.
+              </p>
             </div>
             <div className="field">
               <label>Captain first name</label>
@@ -654,14 +675,14 @@ export default function Teams() {
       {editTarget && (
         <div className="modal-backdrop" onClick={closeEditDialog}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h2>Edit team — {editTarget.registration_number || 'unconfirmed'}</h2>
+            <h2>Edit group — {editTarget.registration_number || 'unconfirmed'}</h2>
             <div className="field">
               <label>Captain email</label>
               <input value={editTarget.captain_email || '—'} disabled />
               <p className="field-note">Email can't be changed after registration.</p>
             </div>
             <div className="field">
-              <label>Team name</label>
+              <label>Group name</label>
               <input
                 value={editForm.team_name}
                 onChange={(e) => setEditForm({ ...editForm, team_name: e.target.value })}
@@ -688,6 +709,7 @@ export default function Teams() {
                   </option>
                 ))}
               </select>
+              <p className="field-note">Internal grouping only — not asked on the public form.</p>
             </div>
             <div className="field">
               <label>Captain first name</label>
@@ -729,11 +751,18 @@ export default function Teams() {
               )}
             </div>
             <div className="field">
-              <label>Roster ({editTarget.roster.length})</label>
+              <label>
+                Participants: {editTarget.participant_count ?? editTarget.roster.length} · Roster (
+                {editTarget.roster.length})
+              </label>
               <div className="roster-list">
                 {editTarget.roster.length === 0 && <span>No runners on this roster.</span>}
                 {editTarget.roster.map((runner) => {
-                  const details = [runner.race_category, runner.gender && titleCase(runner.gender), runner.age_range]
+                  const details = [
+                    categoryNameByCode.get(runner.race_category) || runner.race_category,
+                    runner.gender && titleCase(runner.gender),
+                    runner.age_range,
+                  ]
                     .filter(Boolean)
                     .join(' · ');
                   return (
@@ -765,7 +794,7 @@ export default function Teams() {
       {deleteTarget && (
         <div className="modal-backdrop" onClick={closeDeleteDialog}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h2 className="modal-title-danger">⚠ Delete team registration?</h2>
+            <h2 className="modal-title-danger">⚠ Delete group registration?</h2>
             <p className="bulk-intro">
               Are you sure you want to delete{' '}
               <strong style={{ color: 'var(--text)' }}>

@@ -22,6 +22,7 @@ export interface AdminTeamRegistration {
   captain_last_name: string;
   captain_email: string;
   captain_phone: string;
+  participant_count: number | null;
   free_runner_limit: number;
   roster: RosterRunner[];
   category: string | null;

@@ -7,7 +7,7 @@ export default function HeaderNav() {
         Registrations
       </NavLink>
       <NavLink to="/teams" className={({ isActive }) => (isActive ? 'nav-tab active' : 'nav-tab')}>
-        Teams
+        Groups
       </NavLink>
     </nav>
   );
