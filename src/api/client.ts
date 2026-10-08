@@ -12,6 +12,25 @@ const API_BASE_URL =
 const ACCESS_KEY = 'kicr-admin-access';
 const REFRESH_KEY = 'kicr-admin-refresh';
 
+// DRF validation errors nest arbitrarily — a many=True/nested-serializer
+// field (like a roster) comes back as {"0": {"raceCategory": ["..."]}, ...}
+// rather than a flat string. Recurse through strings/arrays/objects to build
+// a readable "row 1: raceCategory: ..." style message instead of dumping
+// raw JSON.
+function formatDrfErrorValue(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.map(formatDrfErrorValue).join(' ');
+  if (value && typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, v]) => {
+        const label = /^\d+$/.test(key) ? `row ${Number(key) + 1}` : key;
+        return `${label}: ${formatDrfErrorValue(v)}`;
+      })
+      .join('; ');
+  }
+  return String(value);
+}
+
 export function getAccessToken(): string | null {
   return localStorage.getItem(ACCESS_KEY);
 }
@@ -84,8 +103,17 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
 
   if (!res.ok) {
     const errorBody = await res.json().catch(() => ({}));
+    // DRF renders a plain-string ValidationError as a raw JSON array, not
+    // {detail: ...} — check for that before falling back to a raw dump.
+    const arrayMessage = Array.isArray(errorBody) && typeof errorBody[0] === 'string' ? errorBody[0] : null;
+    const fieldErrors =
+      errorBody && typeof errorBody === 'object' && !Array.isArray(errorBody)
+        ? Object.entries(errorBody)
+            .map(([field, value]) => `${field}: ${formatDrfErrorValue(value)}`)
+            .join(' ')
+        : null;
     throw new Error(
-      errorBody?.detail || JSON.stringify(errorBody) || `Request failed (${res.status})`
+      errorBody?.detail || arrayMessage || fieldErrors || `Request failed (${res.status})`
     );
   }
 

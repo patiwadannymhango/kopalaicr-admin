@@ -16,13 +16,13 @@ import {
   type AdminTeamRegistration,
   type TeamFilterOptions,
 } from '../api/team';
-import { GENDER_OPTIONS, PAYMENT_METHOD_OPTIONS } from '../utils/formOptions';
+import { AGE_RANGE_OPTIONS, GENDER_OPTIONS, PAYMENT_METHOD_OPTIONS } from '../utils/formOptions';
 
 const PAGE_SIZE = 25;
 const REFRESH_INTERVAL_MS = 30000;
 const MAX_ROSTER = 8; // matches TEAM_FREE_RUNNER_LIMIT in kopalaicr-api
 
-type RosterDraftEntry = { fullName: string; gender: string };
+type RosterDraftEntry = { fullName: string; gender: string; ageRange: string; raceCategory: string };
 
 export default function Teams() {
   const { logout } = useAuth();
@@ -44,6 +44,7 @@ export default function Teams() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [addBusy, setAddBusy] = useState(false);
+  const [addError, setAddError] = useState('');
   const [exportBusy, setExportBusy] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [addForm, setAddForm] = useState({
@@ -153,7 +154,7 @@ export default function Teams() {
 
   function addRosterRow() {
     if (roster.length >= MAX_ROSTER) return;
-    setRoster([...roster, { fullName: '', gender: '' }]);
+    setRoster([...roster, { fullName: '', gender: '', ageRange: '', raceCategory: '' }]);
   }
 
   function updateRosterRow(index: number, patch: Partial<RosterDraftEntry>) {
@@ -165,8 +166,13 @@ export default function Teams() {
   }
 
   async function handleAddTeam() {
+    const namedRows = roster.filter((r) => r.fullName.trim());
+    if (namedRows.some((r) => !r.raceCategory)) {
+      setAddError('Every named runner needs a race category.');
+      return;
+    }
     setAddBusy(true);
-    setError('');
+    setAddError('');
     try {
       await createTeamManually({
         team_name: addForm.team_name,
@@ -176,9 +182,12 @@ export default function Teams() {
         captain_last_name: addForm.captain_last_name,
         captain_email: addForm.captain_email,
         captain_phone: addForm.captain_phone,
-        roster: roster
-          .filter((r) => r.fullName.trim())
-          .map((r) => ({ fullName: r.fullName, gender: r.gender || undefined })),
+        roster: namedRows.map((r) => ({
+          fullName: r.fullName,
+          gender: r.gender || undefined,
+          ageRange: r.ageRange || undefined,
+          raceCategory: r.raceCategory,
+        })),
         status: addForm.status,
         payment_method: addForm.payment_method,
       });
@@ -188,7 +197,7 @@ export default function Teams() {
       load();
       loadStats();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to register team.');
+      setAddError(err instanceof Error ? err.message : 'Failed to register team.');
     } finally {
       setAddBusy(false);
     }
@@ -299,7 +308,13 @@ export default function Teams() {
           <button className="btn" onClick={handleRefresh}>
             ↻ Refresh
           </button>
-          <button className="btn btn-success" onClick={() => setAddOpen(true)}>
+          <button
+            className="btn btn-success"
+            onClick={() => {
+              setAddError('');
+              setAddOpen(true);
+            }}
+          >
             + Add Team
           </button>
           <button className="btn btn-amber" onClick={handleExport} disabled={exportBusy}>
@@ -563,13 +578,25 @@ export default function Teams() {
                 Roster ({roster.length}/{MAX_ROSTER})
               </label>
               {roster.map((r, index) => (
-                <div key={index} style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                <div key={index} style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
                   <input
                     placeholder="Runner full name"
                     value={r.fullName}
                     onChange={(e) => updateRosterRow(index, { fullName: e.target.value })}
-                    style={{ flex: 1 }}
+                    style={{ flex: 1, minWidth: 140 }}
                   />
+                  <select
+                    className="filter-select"
+                    value={r.raceCategory}
+                    onChange={(e) => updateRosterRow(index, { raceCategory: e.target.value })}
+                  >
+                    <option value="">Race category…</option>
+                    {filterOptions?.categories.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
                   <select
                     className="filter-select"
                     value={r.gender}
@@ -579,6 +606,18 @@ export default function Teams() {
                     {GENDER_OPTIONS.map((g) => (
                       <option key={g} value={g}>
                         {titleCase(g)}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="filter-select"
+                    value={r.ageRange}
+                    onChange={(e) => updateRosterRow(index, { ageRange: e.target.value })}
+                  >
+                    <option value="">Age range…</option>
+                    {AGE_RANGE_OPTIONS.map((a) => (
+                      <option key={a} value={a}>
+                        {a}
                       </option>
                     ))}
                   </select>
@@ -593,6 +632,7 @@ export default function Teams() {
                 </button>
               )}
             </div>
+            {addError && <div className="banner banner-error">{addError}</div>}
             <div className="modal-actions">
               <button className="btn" onClick={() => setAddOpen(false)}>
                 Cancel
@@ -601,13 +641,7 @@ export default function Teams() {
                 className="btn btn-success"
                 onClick={handleAddTeam}
                 disabled={
-                  addBusy ||
-                  !addForm.team_name ||
-                  !addForm.company_or_institution ||
-                  !addForm.relay_category ||
-                  !addForm.captain_first_name ||
-                  !addForm.captain_last_name ||
-                  !addForm.captain_email
+                  addBusy || !addForm.team_name || !addForm.company_or_institution || !addForm.relay_category
                 }
               >
                 {addBusy ? 'Saving…' : 'Register'}
@@ -698,11 +732,16 @@ export default function Teams() {
               <label>Roster ({editTarget.roster.length})</label>
               <div className="roster-list">
                 {editTarget.roster.length === 0 && <span>No runners on this roster.</span>}
-                {editTarget.roster.map((runner) => (
-                  <span className="roster-chip" key={runner.id}>
-                    • {runner.full_name} {runner.gender ? `(${titleCase(runner.gender)})` : ''}
-                  </span>
-                ))}
+                {editTarget.roster.map((runner) => {
+                  const details = [runner.race_category, runner.gender && titleCase(runner.gender), runner.age_range]
+                    .filter(Boolean)
+                    .join(' · ');
+                  return (
+                    <span className="roster-chip" key={runner.id}>
+                      • {runner.full_name} {details ? `(${details})` : ''}
+                    </span>
+                  );
+                })}
               </div>
               <p className="field-note">Roster changes are made in Django admin, not here.</p>
             </div>

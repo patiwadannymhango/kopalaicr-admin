@@ -21,7 +21,6 @@ import {
   GENDER_OPTIONS,
   AGE_RANGE_OPTIONS,
   TSHIRT_SIZE_OPTIONS,
-  DIVISION_OPTIONS,
   PAYMENT_METHOD_OPTIONS,
 } from '../utils/formOptions';
 
@@ -50,6 +49,7 @@ export default function Registrations() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [addBusy, setAddBusy] = useState(false);
+  const [addError, setAddError] = useState('');
   const [addForm, setAddForm] = useState({
     full_name: '',
     email: '',
@@ -59,7 +59,6 @@ export default function Registrations() {
     age_range: '',
     country: '',
     t_shirt_size: '',
-    division: '',
     town_or_city: '',
     club_or_institution: '',
     emergency_contact_name: '',
@@ -82,7 +81,6 @@ export default function Registrations() {
     age_range: '',
     country: '',
     t_shirt_size: '',
-    division: '',
     town_or_city: '',
     club_or_institution: '',
     emergency_contact_name: '',
@@ -157,9 +155,6 @@ export default function Registrations() {
 
   const pendingCount = statusCount('PENDING_PAYMENT') + statusCount('PAYMENT_PROCESSING');
 
-  const selectedAddCategory = filterOptions?.categories.find((c) => c.id === addForm.category_id);
-  const showDivision = selectedAddCategory?.code === '10km-individual';
-
   function resetAddForm() {
     setAddForm({
       full_name: '',
@@ -170,7 +165,6 @@ export default function Registrations() {
       age_range: '',
       country: '',
       t_shirt_size: '',
-      division: '',
       town_or_city: '',
       club_or_institution: '',
       emergency_contact_name: '',
@@ -183,7 +177,7 @@ export default function Registrations() {
 
   async function handleAddPerson() {
     setAddBusy(true);
-    setError('');
+    setAddError('');
     try {
       await createRegistrationManually({
         category_id: addForm.category_id,
@@ -194,7 +188,6 @@ export default function Registrations() {
         age_range: addForm.age_range,
         country: addForm.country,
         t_shirt_size: addForm.t_shirt_size,
-        division: addForm.division,
         town_or_city: addForm.town_or_city,
         club_or_institution: addForm.club_or_institution,
         emergency_contact_name: addForm.emergency_contact_name,
@@ -209,7 +202,7 @@ export default function Registrations() {
       load();
       loadStats();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to register person.');
+      setAddError(err instanceof Error ? err.message : 'Failed to register person.');
     } finally {
       setAddBusy(false);
     }
@@ -225,7 +218,6 @@ export default function Registrations() {
       age_range: row.participant.age_range || '',
       country: row.participant.country || '',
       t_shirt_size: row.t_shirt_size || '',
-      division: row.division || '',
       town_or_city: row.town_or_city || '',
       club_or_institution: row.club_or_institution || '',
       emergency_contact_name: row.emergency_contact_name || '',
@@ -326,7 +318,13 @@ export default function Registrations() {
           <button className="btn" onClick={handleRefresh}>
             ↻ Refresh
           </button>
-          <button className="btn btn-success" onClick={() => setAddOpen(true)}>
+          <button
+            className="btn btn-success"
+            onClick={() => {
+              setAddError('');
+              setAddOpen(true);
+            }}
+          >
             + Add Person
           </button>
           <button className="btn" onClick={() => setBulkUploadOpen(true)}>
@@ -456,7 +454,6 @@ export default function Registrations() {
                 <th>Reference</th>
                 <th>Name</th>
                 <th>Race</th>
-                <th>Division</th>
                 <th>Gender</th>
                 <th>Age</th>
                 <th>Phone</th>
@@ -474,7 +471,6 @@ export default function Registrations() {
                   <td>{r.registration_number || '—'}</td>
                   <td className="name">{r.participant.full_name}</td>
                   <td>{r.category_name}</td>
-                  <td className={r.division ? '' : 'dim'}>{titleCase(r.division) || '—'}</td>
                   <td className={r.participant.gender ? '' : 'dim'}>{titleCase(r.participant.gender) || '—'}</td>
                   <td className={r.participant.age_range ? '' : 'dim'}>{r.participant.age_range || '—'}</td>
                   <td className={r.participant.phone ? '' : 'dim'}>{r.participant.phone || '—'}</td>
@@ -547,7 +543,7 @@ export default function Registrations() {
                 className="filter-select"
                 style={{ width: '100%' }}
                 value={addForm.category_id}
-                onChange={(e) => setAddForm({ ...addForm, category_id: e.target.value, division: '' })}
+                onChange={(e) => setAddForm({ ...addForm, category_id: e.target.value })}
               >
                 <option value="">Select a race…</option>
                 {filterOptions?.categories.map((c) => (
@@ -557,24 +553,6 @@ export default function Registrations() {
                 ))}
               </select>
             </div>
-            {showDivision && (
-              <div className="field">
-                <label>Division</label>
-                <select
-                  className="filter-select"
-                  style={{ width: '100%' }}
-                  value={addForm.division}
-                  onChange={(e) => setAddForm({ ...addForm, division: e.target.value })}
-                >
-                  <option value="">Select…</option>
-                  {DIVISION_OPTIONS.map((d) => (
-                    <option key={d.value} value={d.value}>
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
             <div className="field">
               <label>Status</label>
               <select
@@ -699,6 +677,7 @@ export default function Registrations() {
                 onChange={(e) => setAddForm({ ...addForm, medical_notes: e.target.value })}
               />
             </div>
+            {addError && <div className="banner banner-error">{addError}</div>}
             <div className="modal-actions">
               <button className="btn" onClick={() => setAddOpen(false)}>
                 Cancel
@@ -805,22 +784,6 @@ export default function Registrations() {
                 {TSHIRT_SIZE_OPTIONS.map((s) => (
                   <option key={s} value={s}>
                     {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label>Division</label>
-              <select
-                className="filter-select"
-                style={{ width: '100%' }}
-                value={editForm.division}
-                onChange={(e) => setEditForm({ ...editForm, division: e.target.value })}
-              >
-                <option value="">—</option>
-                {DIVISION_OPTIONS.map((d) => (
-                  <option key={d.value} value={d.value}>
-                    {d.label}
                   </option>
                 ))}
               </select>

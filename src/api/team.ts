@@ -5,6 +5,8 @@ export interface RosterRunner {
   id: string;
   full_name: string;
   gender: string;
+  age_range: string;
+  race_category: string;
 }
 
 export interface AdminTeamRegistration {
@@ -22,8 +24,8 @@ export interface AdminTeamRegistration {
   captain_phone: string;
   free_runner_limit: number;
   roster: RosterRunner[];
-  category: string;
-  category_name: string;
+  category: string | null;
+  category_name: string | null;
   registered_at: string;
   updated_at: string;
 }
@@ -74,7 +76,7 @@ export async function createTeamManually(payload: {
   captain_last_name: string;
   captain_email: string;
   captain_phone: string;
-  roster?: { fullName: string; gender?: string }[];
+  roster?: { fullName: string; gender?: string; ageRange?: string; raceCategory: string }[];
   status?: string;
   payment_method?: string;
 }) {
